@@ -26,7 +26,7 @@ class CurrentPage extends StatefulWidget {
 }
 
 class _CurrentPageState extends State<CurrentPage> {
-  final pages = [Chats(), Contacts()];
+  final pages = [const Chats(), const Contacts()];
   @override
   Widget build(BuildContext context) {
     return Container();
@@ -42,10 +42,12 @@ class BottomNav extends StatefulWidget {
 
 class _BottomNavState extends State<BottomNav> {
   int currentPage = 0;
+  void handleItemSelected(int index) {}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Messaging App")),
+      body: const Chats(),
       bottomNavigationBar: NavigationBar(
         destinations: const [
           NavigationDestination(
