@@ -46,7 +46,12 @@ class _BottomNavState extends State<BottomNav> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Messaging App")),
+      appBar: AppBar(
+        title: Transform(
+            transform: Matrix4.translationValues(0.0, -7.0, 0.0),
+            child: const Text("Chats App")),
+        toolbarHeight: 30,
+      ),
       body: const Chats(),
       bottomNavigationBar: NavigationBar(
         destinations: const [
