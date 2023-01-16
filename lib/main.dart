@@ -54,6 +54,8 @@ class _BottomNavState extends State<BottomNav> {
       ),
       body: const Chats(),
       bottomNavigationBar: NavigationBar(
+        elevation: 3.0,
+        height: 70,
         destinations: const [
           NavigationDestination(
               icon: Icon(CupertinoIcons.bubble_left_bubble_right_fill),
