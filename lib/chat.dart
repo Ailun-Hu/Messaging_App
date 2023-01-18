@@ -1,12 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:jiffy/jiffy.dart';
-import 'package:messaging_app/Widgets/Helpers.dart';
 import 'package:messaging_app/models/message_data.dart';
 import 'package:messaging_app/theme.dart';
-import 'package:flutter_animate/animate.dart';
 
 class Chat extends StatefulWidget {
   const Chat({Key? key, required this.messageData}) : super(key: key);
@@ -52,43 +49,59 @@ class _ChatState extends State<Chat> {
             ),
           ),
         ),
-        body: Messages(
-          messageData: widget.messageData,
+        body: Column(
+          children: [
+            Expanded(
+              child: Messages(
+                messageData: widget.messageData,
+              ),
+            ),
+            const _ActionBar()
+          ],
         ));
   }
 }
 
-class ChatMessages extends StatefulWidget {
-  const ChatMessages({Key? key}) : super(key: key);
-
-  @override
-  State<ChatMessages> createState() => _ChatMessagesState();
-}
-
-class _ChatMessagesState extends State<ChatMessages> {
-  int text = 1;
-  final items = [];
-  final GlobalKey<AnimatedListState> _key = GlobalKey();
-  void sendMessage() {
-    items.insert(
-        0,
-        MessageTile(
-            message: text.toString(), messageDate: Helpers.randomDate()));
-    _key.currentState!
-        .insertItem(0, duration: const Duration(milliseconds: 100));
-  }
-
-  void _removeItem(int index) {
-    _key.currentState!.removeItem(
-      index,
-      (context, animation) => SizeTransition(sizeFactor: animation),
-      duration: const Duration(milliseconds: 200),
-    );
-  }
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container();
+    return SafeArea(
+        bottom: true,
+        top: false,
+        child: Row(children: [
+          Container(
+            decoration: BoxDecoration(
+                border: Border(
+                    right: BorderSide(
+                        width: 2, color: Theme.of(context).dividerColor))),
+            child: const Padding(
+              padding: EdgeInsets.only(left: 18, right: 16),
+              child: Icon(
+                CupertinoIcons.add_circled_solid,
+                size: 40,
+              ),
+            ),
+          ),
+          const Expanded(
+              child: Padding(
+            padding: EdgeInsets.only(left: 16),
+            child: TextField(
+              style: TextStyle(fontSize: 14),
+              decoration:
+                  InputDecoration(hintText: "...", border: InputBorder.none),
+            ),
+          )),
+          Padding(
+            padding: const EdgeInsets.only(left: 12, right: 24),
+            child: FloatingActionButton(
+              onPressed: (() {}),
+              backgroundColor: AppColors.secondary,
+              child: const Icon(Icons.send_rounded),
+            ),
+          )
+        ]));
   }
 }
 
@@ -170,7 +183,7 @@ class MessageTile extends StatefulWidget {
 }
 
 class _MessageTileState extends State<MessageTile> {
-  bool show = true;
+  bool show = false;
   @override
   Widget build(BuildContext context) {
     return Padding(
