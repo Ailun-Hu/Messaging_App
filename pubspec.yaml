@@ -33,6 +33,7 @@ dependencies:
   faker: ^2.0.0
   flutter:
     sdk: flutter
+  flutter_animate: ^2.2.0
   google_fonts: ^3.0.1
   jiffy: ^5.0.0
 
