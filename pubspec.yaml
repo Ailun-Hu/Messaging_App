@@ -36,6 +36,8 @@ dependencies:
   flutter_animate: ^2.2.0
   google_fonts: ^3.0.1
   jiffy: ^5.0.0
+  logger: ^1.1.0
+  stream_chat_flutter_core: ^5.2.0
 
 dev_dependencies:
   flutter_lints: ^2.0.0
