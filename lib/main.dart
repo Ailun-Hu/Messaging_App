@@ -1,28 +1,24 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:messaging_app/Contacts.dart';
-import 'package:messaging_app/SelectUser.dart';
-import 'package:messaging_app/Widgets/Helpers.dart';
+import 'package:messaging_app/add_user.dart';
+import 'package:messaging_app/app.dart';
+import 'package:messaging_app/contacts.dart';
+import 'package:messaging_app/select_user.dart';
 import 'package:messaging_app/chats.dart';
 import 'package:messaging_app/theme.dart';
-import 'package:stream_chat_flutter_core/stream_chat_flutter_core.dart';
-import 'package:logger/logger.dart' as log;
+import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 
-var logger = log.Logger();
+void main() async {
+  final client = StreamChatClient('s63vmjsq57kr');
 
-int currentPage = 1;
-void main() {
-  const streamKey = 's63vmjsq57kr';
-  final client = StreamChatClient(streamKey);
-  runApp(MyApp(
-    client: client,
-  ));
+  runApp(MyApp(client: client));
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key, required this.client});
 
   final StreamChatClient client;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -30,7 +26,7 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return StreamChatCore(client: client, child: child!);
       },
-      home: const BottomNav(),
+      home: BottomNav(client: client),
     );
   }
 }
@@ -50,13 +46,16 @@ class _CurrentPageState extends State<CurrentPage> {
 }
 
 class BottomNav extends StatefulWidget {
-  const BottomNav({super.key});
+  const BottomNav({super.key, required this.client});
 
+  final StreamChatClient client;
   @override
   State<BottomNav> createState() => _BottomNavState();
 }
 
 class _BottomNavState extends State<BottomNav> {
+  int currentPage = 1;
+
   Future<void> _signOut() async {
     try {
       await StreamChatCore.of(context).client.disconnectUser();
@@ -68,6 +67,12 @@ class _BottomNavState extends State<BottomNav> {
     }
   }
 
+  void goToChats() {
+    setState(() {
+      currentPage = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,14 +80,16 @@ class _BottomNavState extends State<BottomNav> {
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 10, bottom: 5),
-              child: Container(
-                width: 55,
-                height: 55,
-                decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                        image: NetworkImage(Helpers.randomPictureUrl()))),
-              ),
+              child: currentPage == 0
+                  ? Container(
+                      width: 55,
+                      height: 55,
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          image: DecorationImage(
+                              image: NetworkImage(context.currentUserImage!))),
+                    )
+                  : Container(),
             ),
           ],
           title: const Text(
@@ -90,12 +97,24 @@ class _BottomNavState extends State<BottomNav> {
             style: TextStyle(fontSize: 22),
           ),
           toolbarHeight: 70,
-          leading: const Icon(
-            Icons.note_add_outlined,
-            size: 40,
+          leading: InkWell(
+            child: const Icon(
+              Icons.note_add_outlined,
+              size: 40,
+            ),
+            onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (BuildContext context) {
+                  return AddUserListPage();
+                  //const Scaffold(body: UserListPage());
+                },
+              ));
+            },
           )),
       body: Container(
-        child: currentPage == 1 ? const SelectUserScreen() : const Chats(),
+        child: currentPage == 1
+            ? SelectUserScreen(goToChats: goToChats)
+            : const Chats(),
       ),
       bottomNavigationBar: NavigationBar(
         elevation: 3.0,
@@ -107,12 +126,9 @@ class _BottomNavState extends State<BottomNav> {
           NavigationDestination(icon: Icon(Icons.people), label: "Contacts")
         ],
         onDestinationSelected: (int index) {
-          // if (currentPage == 0 && index == 1) {
-          //   _signOut();
-          // }
-          setState(() {
-            currentPage = index;
-          });
+          if (currentPage == 0 && index == 1) {
+            _signOut();
+          }
         },
         selectedIndex: currentPage,
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,

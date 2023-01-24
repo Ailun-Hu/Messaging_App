@@ -5,10 +5,11 @@ import 'package:faker/faker.dart';
 import 'package:messaging_app/models/message_data.dart';
 import 'package:messaging_app/theme.dart';
 
-import 'Widgets/Helpers.dart';
+import 'Widgets/helpers.dart';
 
 class Chats extends StatelessWidget {
   const Chats({super.key});
+
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(
