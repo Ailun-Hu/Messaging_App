@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:messaging_app/chat.dart';
 import 'package:stream_chat_flutter_core/stream_chat_flutter_core.dart';
 
 class AddUserListPage extends StatefulWidget {
@@ -16,6 +17,21 @@ class _AddUserListPageState extends State<AddUserListPage> {
         Filter.notExists('dashboard_user')
       ]));
 
+  Future<void> createChannel(BuildContext context, User user) async {
+    final core = StreamChatCore.of(context);
+    final channel = core.client.channel('messaging', extraData: {
+      'members': [core.currentUser!.id, user.id]
+    });
+
+    await channel.watch();
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => StreamChannel(
+        channel: channel,
+        child: Chat(channel: channel),
+      ),
+    ));
+  }
+
   @override
   void initState() {
     userListController.doInitialLoad();
@@ -30,6 +46,7 @@ class _AddUserListPageState extends State<AddUserListPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text("Create Message")),
         body: PagedValueListenableBuilder<int, User>(
           valueListenable: userListController,
           builder: (context, value, child) {
@@ -62,29 +79,36 @@ class _AddUserListPageState extends State<AddUserListPage> {
                     }
 
                     final _item = users[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 95),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  image: DecorationImage(
-                                      image: NetworkImage(_item.image!)))),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 20),
-                            child: Text(
-                              _item.name,
-                              style: const TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold),
-                              overflow: TextOverflow.ellipsis,
+                    return SizedBox(
+                      height: 100,
+                      child: InkWell(
+                        onTap: () {
+                          createChannel(context, _item);
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(left: 100),
+                              child: Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      image: DecorationImage(
+                                          image: NetworkImage(_item.image!)))),
                             ),
-                          )
-                        ],
+                            Padding(
+                              padding: const EdgeInsets.only(left: 20),
+                              child: Text(
+                                _item.name,
+                                style: const TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            )
+                          ],
+                        ),
                       ),
                     );
                   },

@@ -2,63 +2,85 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:messaging_app/models/message_data.dart';
+import 'package:messaging_app/app.dart';
 import 'package:messaging_app/theme.dart';
+import 'package:stream_chat_flutter/stream_chat_flutter.dart';
+import 'package:stream_chat_flutter_core/stream_chat_flutter_core.dart';
 
-class Chat extends StatefulWidget {
-  const Chat({Key? key, required this.messageData}) : super(key: key);
+class Chat extends StatelessWidget {
+  const Chat({Key? key, required this.channel}) : super(key: key);
 
-  final MessageData messageData;
-
-  @override
-  State<Chat> createState() => _ChatState();
-}
-
-class _ChatState extends State<Chat> {
+  final Channel channel;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 80,
-          title: Column(
-            children: [
-              Container(
-                  width: 53,
-                  height: 53,
-                  decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                          image:
-                              NetworkImage(widget.messageData.profilePicture),
-                          fit: BoxFit.fill))),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 5),
-                child: Text(widget.messageData.senderName,
-                    style: const TextStyle(fontSize: 17)),
-              ),
-            ],
-          ),
-          automaticallyImplyLeading: false,
-          leading: IconButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            icon: const Icon(
-              Icons.arrow_back_ios_new_outlined,
-              size: 30,
+      appBar: AppBar(
+        toolbarHeight: 80,
+        title: Column(
+          children: [
+            Container(
+                width: 53,
+                height: 53,
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                        image: NetworkImage(context.currentUserImage!),
+                        fit: BoxFit.fill))),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 5),
+              child: Text("hi", style: TextStyle(fontSize: 17)),
             ),
+          ],
+        ),
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          icon: const Icon(
+            Icons.arrow_back_ios_new_outlined,
+            size: 30,
           ),
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: Messages(
-                messageData: widget.messageData,
-              ),
+      ),
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            child: MessageListCore(
+              emptyBuilder: (context) {
+                return const Center(
+                  child: Text('Nothing here...'),
+                );
+              },
+              loadingBuilder: (context) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              },
+              messageListBuilder: (context, list) {
+                return Messages(messages: list);
+              },
+              errorBuilder: (context, err) {
+                return const Center(
+                  child: Text('Error'),
+                );
+              },
             ),
-            const _ActionBar()
-          ],
-        ));
+          ),
+          const _ActionBar()
+        ],
+      ),
+      // Column(
+      //   children: [
+      //     // Expanded(
+      //     //   child: Messages(
+      //     //     messageData: messageData,
+      //     //   ),
+      //     // ),
+      //     const _ActionBar()
+      //   ],
+      // )
+    );
   }
 }
 
@@ -106,41 +128,69 @@ class _ActionBar extends StatelessWidget {
 }
 
 class Messages extends StatelessWidget {
-  const Messages({super.key, required this.messageData});
-  final MessageData messageData;
+  const Messages({super.key, required this.messages});
+  final List<Message> messages;
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      reverse: true,
-      children: [
-        const _DateLabel(label: "Yesterday"),
-        MessageTile(
-          message: messageData.message,
-          messageDate: messageData.messageDate,
-        ),
-        SenderMessageTile(
-          message: messageData.message,
-          messageDate: messageData.messageDate,
-          profilePicture: messageData.profilePicture,
-        ),
-        SenderMessageTile(
-          message: messageData.message,
-          messageDate: messageData.messageDate,
-          profilePicture: messageData.profilePicture,
-        ),
-        SenderMessageTile(
-          message: messageData.message,
-          messageDate: messageData.messageDate,
-          profilePicture: messageData.profilePicture,
-        ),
-        SenderMessageTile(
-          message: messageData.message,
-          messageDate: messageData.messageDate,
-          profilePicture: messageData.profilePicture,
-        )
-      ],
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: ListView.separated(
+        separatorBuilder: ((context, index) {
+          if (index == messages.length - 1) {
+            return _DateLabel(label: messages[index].createdAt.toString());
+          } else {
+            return const SizedBox.shrink();
+          }
+        }),
+        itemCount: messages.length + 1,
+        itemBuilder: (context, index) {
+          if (index < messages.length) {
+            final message = messages[index];
+            if (message.user?.id == context.currentUser?.id) {
+              return MessageTile(
+                  message: message.text!, messageDate: message.createdAt);
+            } else {
+              return SenderMessageTile(
+                  message: message.text!,
+                  messageDate: message.createdAt,
+                  profilePicture: message.user!.image!);
+            }
+          } else {
+            return const SizedBox.shrink();
+          }
+        },
+      ),
     );
+    // ListView(
+    //   children: [
+    //     const _DateLabel(label: "Yesterday"),
+    //     MessageTile(
+    //       message: messageData.message,
+    //       messageDate: messageData.messageDate,
+    //     ),
+    //     SenderMessageTile(
+    //       message: messageData.message,
+    //       messageDate: messageData.messageDate,
+    //       profilePicture: messageData.profilePicture,
+    //     ),
+    //     SenderMessageTile(
+    //       message: messageData.message,
+    //       messageDate: messageData.messageDate,
+    //       profilePicture: messageData.profilePicture,
+    //     ),
+    //     SenderMessageTile(
+    //       message: messageData.message,
+    //       messageDate: messageData.messageDate,
+    //       profilePicture: messageData.profilePicture,
+    //     ),
+    //     SenderMessageTile(
+    //       message: messageData.message,
+    //       messageDate: messageData.messageDate,
+    //       profilePicture: messageData.profilePicture,
+    //     )
+    //   ],
+    // );
   }
 }
 

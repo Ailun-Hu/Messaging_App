@@ -4,134 +4,255 @@ import 'package:messaging_app/chat.dart';
 import 'package:faker/faker.dart';
 import 'package:messaging_app/models/message_data.dart';
 import 'package:messaging_app/theme.dart';
+import 'package:stream_chat_flutter_core/stream_chat_flutter_core.dart';
 
 import 'Widgets/helpers.dart';
 
-class Chats extends StatelessWidget {
+class Chats extends StatefulWidget {
   const Chats({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        SliverList(
-          delegate: SliverChildBuilderDelegate(_delagate),
-        )
-      ],
-    );
-  }
-
-  Widget _delagate(BuildContext context, int index) {
-    final Faker faker = Faker();
-    final date = Helpers.randomDate();
-    return _MessageTitle(
-        messageData: MessageData(
-      senderName: faker.person.name(),
-      message: faker.lorem.sentence(),
-      dataMessage: Jiffy(date).fromNow(),
-      profilePicture: Helpers.randomPictureUrl(),
-      messageDate: date,
-    ));
-  }
+  State<Chats> createState() => _ChatsState();
 }
 
-class _MessageTitle extends StatelessWidget {
-  const _MessageTitle({Key? key, required this.messageData}) : super(key: key);
+class _ChatsState extends State<Chats> {
+  late final channelListController = StreamChannelListController(
+    client: StreamChatCore.of(context).client,
+    filter: Filter.and([
+      Filter.equal('type', 'messaging'),
+      Filter.in_(
+        'members',
+        [
+          StreamChatCore.of(context).currentUser!.id,
+        ],
+      ),
+    ]),
+  );
 
-  final MessageData messageData;
+  @override
+  void initState() {
+    channelListController.doInitialLoad();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    channelListController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        Navigator.of(context)
-            .push(MaterialPageRoute(builder: (BuildContext context) {
-          return Chat(messageData: messageData);
-        }));
-      },
-      child: Container(
-        height: 90,
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        child: Row(children: [
-          Padding(
-              padding: const EdgeInsets.all(8),
-              child: Container(
-                  width: 75,
-                  height: 75,
-                  decoration: BoxDecoration(
-                      border: Border.all(
-                          color: const Color.fromARGB(255, 55, 213, 249),
-                          width: 5),
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                          image: NetworkImage(messageData.profilePicture),
-                          fit: BoxFit.fill)))),
-          Expanded(
-              child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: SizedBox(
-                  height: 22,
-                  child: Text(
-                    messageData.senderName,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 18,
-                        letterSpacing: 0.2,
-                        wordSpacing: 1.5,
-                        fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 7),
-                child: SizedBox(
-                    height: 30,
-                    child: Text(
-                      messageData.message,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 14),
-                    )),
-              ),
-            ],
-          )),
-          Padding(
-            padding: const EdgeInsets.only(right: 20.0),
-            child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const SizedBox(height: 4),
-                  Text(
-                    Jiffy(messageData.messageDate).fromNow().toUpperCase(),
-                    style: const TextStyle(
-                        fontSize: 11.5,
-                        letterSpacing: -0.2,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textFaded),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: const BoxDecoration(
-                        color: AppColors.secondary, shape: BoxShape.circle),
-                    child: const Center(
-                      child: Text(
-                        '1',
-                        style:
-                            TextStyle(fontSize: 12, color: AppColors.textLigth),
-                      ),
+    return Scaffold(
+      body: PagedValueListenableBuilder<int, Channel>(
+        valueListenable: channelListController,
+        builder: (context, value, child) {
+          return value.when(
+            (channels, nextPageKey, error) => LazyLoadScrollView(
+              onEndOfPage: () async {
+                if (nextPageKey != null) {
+                  channelListController.loadMore(nextPageKey);
+                }
+              },
+              child: ListView.builder(
+                /// We're using the channels length when there are no more
+                /// pages to load and there are no errors with pagination.
+                /// In case we need to show a loading indicator or and error
+                /// tile we're increasing the count by 1.
+                itemCount: (nextPageKey != null || error != null)
+                    ? channels.length + 1
+                    : channels.length,
+                itemBuilder: (BuildContext context, int index) {
+                  if (index == channels.length) {
+                    if (error != null) {
+                      return TextButton(
+                        onPressed: () {
+                          channelListController.retry();
+                        },
+                        child: Text(error.message),
+                      );
+                    }
+                    return const CircularProgressIndicator();
+                  }
+
+                  final _item = channels[index];
+                  return ListTile(
+                    title: Text(_item.name ?? ''),
+                    subtitle: StreamBuilder<Message?>(
+                      stream: _item.state!.lastMessageStream,
+                      initialData: _item.state!.lastMessage,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          return Text(snapshot.data!.text!);
+                        }
+
+                        return _MessageTitle(channel: _item);
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 23)
-                ]),
-          )
-        ]),
+                    onTap: () {
+                      // / Display a list of messages when the user taps on
+                      // / an item. We can use [StreamChannel] to wrap our
+                      // / [MessageScreen] screen with the selected channel.
+                      // /
+                      // / This allows us to use a built-in inherited widget
+                      // / for accessing our `channel` later on.
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => StreamChannel(
+                            channel: _item,
+                            child: Chat(channel: _item),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            loading: () => const Center(
+              child: SizedBox(
+                height: 100,
+                width: 100,
+                child: CircularProgressIndicator(),
+              ),
+            ),
+            error: (e) => Center(
+              child: Text(
+                'Oh no, something went wrong. '
+                'Please check your config. $e',
+              ),
+            ),
+          );
+        },
       ),
     );
+  }
+}
+
+class _MessageTitle extends StatefulWidget {
+  const _MessageTitle({Key? key, required this.channel}) : super(key: key);
+
+  final Channel channel;
+
+  @override
+  State<_MessageTitle> createState() => _MessageTitleState();
+}
+
+class _MessageTitleState extends State<_MessageTitle> {
+  String otherUserImage = "";
+  String otherUserName = "";
+  _otherUser() {
+    widget.channel
+        .queryMembers(
+            filter: Filter.notEqual(
+                'id', StreamChatCore.of(context).currentUser!.id),
+            pagination: const PaginationParams(limit: 1))
+        .then((value) => value.members[0].userId.toString())
+        .then((value) => StreamChatCore.of(context)
+            .client
+            .queryUsers(filter: Filter.equal('id', value))
+            .then((value) => setState(() {
+                  otherUserImage = value.users[0].image.toString();
+                  otherUserName = value.users[0].name.toString();
+                })));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _otherUser();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 90,
+      margin: const EdgeInsets.symmetric(horizontal: 3),
+      child: Row(children: [
+        Padding(
+            padding: const EdgeInsets.all(8),
+            child: Container(
+                width: 75,
+                height: 75,
+                decoration: BoxDecoration(
+                    border: Border.all(
+                        color: const Color.fromARGB(255, 55, 213, 249),
+                        width: 5),
+                    shape: BoxShape.circle,
+                    image: otherUserImage == ""
+                        ? null
+                        : DecorationImage(
+                            image: NetworkImage(otherUserImage),
+                            fit: BoxFit.fill)))),
+        Expanded(
+            child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: SizedBox(
+                height: 22,
+                child: Text(
+                  otherUserName,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      letterSpacing: 0.2,
+                      wordSpacing: 1.5,
+                      fontWeight: FontWeight.w900),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 7),
+              child: SizedBox(height: 30, child: buildLastMessage()),
+            ),
+          ],
+        )),
+        Padding(
+          padding: const EdgeInsets.only(right: 20.0),
+          child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  Jiffy(Helpers.randomDate()).fromNow().toUpperCase(),
+                  style: const TextStyle(
+                      fontSize: 11.5,
+                      letterSpacing: -0.2,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textFaded),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: const BoxDecoration(
+                      color: AppColors.secondary, shape: BoxShape.circle),
+                  child: const Center(
+                    child: Text(
+                      '1',
+                      style:
+                          TextStyle(fontSize: 12, color: AppColors.textLigth),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 23)
+              ]),
+        )
+      ]),
+    );
+  }
+
+  Widget buildLastMessage() {
+    return BetterStreamBuilder(
+        stream: widget.channel.state!.lastMessageStream,
+        builder: (context, lastMessage) {
+          return Text(lastMessage.text ?? "",
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: AppColors.textFaded));
+        });
   }
 }

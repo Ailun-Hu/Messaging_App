@@ -97,7 +97,32 @@ class _BottomNavState extends State<BottomNav> {
             style: TextStyle(fontSize: 22),
           ),
           toolbarHeight: 70,
-          leading: InkWell(
+          leading:
+              // PopupItemLauncher(
+              //   tag: 'test',
+              //   popUp:
+              //   PopUpItem(
+              //       color: Colors.white,
+              //       shape: RoundedRectangleBorder(
+              //           borderRadius: BorderRadius.circular(32)),
+              //       tag: 'test',
+              //       elevation: 2,
+              //       padding: const EdgeInsets.all(8),
+              //       child: const Text("hello")
+              //       //const AddUserListPage(),
+              //       ),
+              //   child: Material(
+              //     color: Colors.white,
+              //     elevation: 2,
+              //     shape: RoundedRectangleBorder(
+              //         borderRadius: BorderRadius.circular(32)),
+              //     child: const Icon(
+              //       Icons.note_add_outlined,
+              //       size: 40,
+              //     ),
+              //   ),
+              // )),
+              InkWell(
             child: const Icon(
               Icons.note_add_outlined,
               size: 40,
@@ -105,8 +130,7 @@ class _BottomNavState extends State<BottomNav> {
             onTap: () {
               Navigator.of(context).push(MaterialPageRoute(
                 builder: (BuildContext context) {
-                  return AddUserListPage();
-                  //const Scaffold(body: UserListPage());
+                  return const AddUserListPage();
                 },
               ));
             },
