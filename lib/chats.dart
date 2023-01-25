@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:jiffy/jiffy.dart';
 import 'package:messaging_app/chat.dart';
-import 'package:faker/faker.dart';
-import 'package:messaging_app/models/message_data.dart';
 import 'package:messaging_app/theme.dart';
 import 'package:stream_chat_flutter_core/stream_chat_flutter_core.dart';
-
-import 'Widgets/helpers.dart';
 
 class Chats extends StatefulWidget {
   const Chats({super.key});
@@ -82,10 +78,6 @@ class _ChatsState extends State<Chats> {
                       stream: _item.state!.lastMessageStream,
                       initialData: _item.state!.lastMessage,
                       builder: (context, snapshot) {
-                        if (snapshot.hasData) {
-                          return Text(snapshot.data!.text!);
-                        }
-
                         return _MessageTitle(channel: _item);
                       },
                     ),
@@ -217,14 +209,7 @@ class _MessageTitleState extends State<_MessageTitle> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 const SizedBox(height: 4),
-                Text(
-                  Jiffy(Helpers.randomDate()).fromNow().toUpperCase(),
-                  style: const TextStyle(
-                      fontSize: 11.5,
-                      letterSpacing: -0.2,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textFaded),
-                ),
+                _buildLastMessageAt(),
                 const SizedBox(height: 10),
                 Container(
                   width: 20,
@@ -252,7 +237,44 @@ class _MessageTitleState extends State<_MessageTitle> {
         builder: (context, lastMessage) {
           return Text(lastMessage.text ?? "",
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, color: AppColors.textFaded));
+              style: const TextStyle(fontSize: 15, color: AppColors.textFaded));
         });
+  }
+
+  Widget _buildLastMessageAt() {
+    return BetterStreamBuilder<DateTime>(
+      stream: widget.channel.lastMessageAtStream,
+      initialData: widget.channel.lastMessageAt,
+      builder: (context, data) {
+        final lastMessageAt = data.toLocal();
+        String stringDate;
+        final now = DateTime.now();
+
+        final startOfDay = DateTime(now.year, now.month, now.day);
+
+        if (lastMessageAt.millisecondsSinceEpoch >=
+            startOfDay.millisecondsSinceEpoch) {
+          stringDate = Jiffy(lastMessageAt.toLocal()).jm;
+        } else if (lastMessageAt.millisecondsSinceEpoch >=
+            startOfDay
+                .subtract(const Duration(days: 1))
+                .millisecondsSinceEpoch) {
+          stringDate = 'YESTERDAY';
+        } else if (startOfDay.difference(lastMessageAt).inDays < 7) {
+          stringDate = Jiffy(lastMessageAt.toLocal()).EEEE;
+        } else {
+          stringDate = Jiffy(lastMessageAt.toLocal()).yMd;
+        }
+        return Text(
+          stringDate,
+          style: const TextStyle(
+            fontSize: 11,
+            letterSpacing: -0.2,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textFaded,
+          ),
+        );
+      },
+    );
   }
 }

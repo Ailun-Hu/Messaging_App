@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -84,8 +86,50 @@ class Chat extends StatelessWidget {
   }
 }
 
-class _ActionBar extends StatelessWidget {
+class _ActionBar extends StatefulWidget {
   const _ActionBar({Key? key}) : super(key: key);
+
+  @override
+  State<_ActionBar> createState() => _ActionBarState();
+}
+
+class _ActionBarState extends State<_ActionBar> {
+  final TextEditingController controller = TextEditingController();
+
+  Timer? _debounce;
+
+  Future<void> sendMessage() async {
+    if (controller.text.isNotEmpty) {
+      StreamChannel.of(context)
+          .channel
+          .sendMessage(Message(text: controller.text));
+      controller.clear();
+      FocusScope.of(context).unfocus();
+    }
+  }
+
+  void _onTextChange() {
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(seconds: 1), () {
+      if (mounted) {
+        StreamChannel.of(context).channel.keyStroke();
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    controller.addListener(_onTextChange);
+  }
+
+  @override
+  void dispose() {
+    controller.removeListener(_onTextChange);
+    controller.dispose();
+
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,27 +142,36 @@ class _ActionBar extends StatelessWidget {
                 border: Border(
                     right: BorderSide(
                         width: 2, color: Theme.of(context).dividerColor))),
-            child: const Padding(
-              padding: EdgeInsets.only(left: 18, right: 16),
-              child: Icon(
-                CupertinoIcons.add_circled_solid,
-                size: 40,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 18, right: 16),
+              child: FloatingActionButton(
+                onPressed: sendMessage,
+                child: const Icon(
+                  CupertinoIcons.add_circled_solid,
+                  size: 40,
+                ),
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
               child: Padding(
-            padding: EdgeInsets.only(left: 16),
+            padding: const EdgeInsets.only(left: 16),
             child: TextField(
-              style: TextStyle(fontSize: 14),
-              decoration:
-                  InputDecoration(hintText: "...", border: InputBorder.none),
+              controller: controller,
+              style: const TextStyle(fontSize: 14),
+              decoration: const InputDecoration(
+                  hintText: "...", border: InputBorder.none),
+              onChanged: ((value) {
+                StreamChannel.of(context).channel.keyStroke();
+              }),
+              onSubmitted: (_) => sendMessage(),
             ),
           )),
           Padding(
             padding: const EdgeInsets.only(left: 12, right: 24),
             child: FloatingActionButton(
-              onPressed: (() {}),
+              heroTag: "Test",
+              onPressed: sendMessage,
               backgroundColor: AppColors.secondary,
               child: const Icon(Icons.send_rounded),
             ),
@@ -261,7 +314,7 @@ class _MessageTileState extends State<MessageTile> {
                       padding: const EdgeInsets.symmetric(
                           vertical: 14, horizontal: 20),
                       child: Text(
-                        widget.message + widget.message + widget.message,
+                        widget.message,
                         style: GoogleFonts.getFont("Lato",
                             color: const Color(0xFFF5F5F5), fontSize: 16),
                       ),
@@ -345,9 +398,7 @@ class _SenderMessageTileState extends State<SenderMessageTile> {
                               padding: const EdgeInsets.symmetric(
                                   vertical: 14, horizontal: 20),
                               child: Text(
-                                widget.message +
-                                    widget.message +
-                                    widget.message,
+                                widget.message,
                                 style: GoogleFonts.getFont("Lato",
                                     color: const Color.fromARGB(255, 0, 0, 0),
                                     fontSize: 16),
