@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:jiffy/jiffy.dart';
 import 'package:messaging_app/chat.dart';
 import 'package:messaging_app/theme.dart';
-import 'package:stream_chat_flutter_core/stream_chat_flutter_core.dart';
+import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 
 class Chats extends StatefulWidget {
   const Chats({super.key});
@@ -163,17 +162,14 @@ class _MessageTitleState extends State<_MessageTitle> {
       child: Row(children: [
         Padding(
             padding: const EdgeInsets.all(8),
-            child: Container(
-                width: 75,
-                height: 75,
-                decoration: BoxDecoration(
-                    border: Border.all(
-                        color: const Color.fromARGB(255, 55, 213, 249),
-                        width: 5),
-                    shape: BoxShape.circle,
-                    image: otherUserImage == ""
-                        ? null
-                        : DecorationImage(
+            child: otherUserImage == ""
+                ? Container()
+                : Container(
+                    width: 75,
+                    height: 75,
+                    decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        image: DecorationImage(
                             image: NetworkImage(otherUserImage),
                             fit: BoxFit.fill)))),
         Expanded(
@@ -211,19 +207,7 @@ class _MessageTitleState extends State<_MessageTitle> {
                 const SizedBox(height: 4),
                 _buildLastMessageAt(),
                 const SizedBox(height: 10),
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: const BoxDecoration(
-                      color: AppColors.secondary, shape: BoxShape.circle),
-                  child: const Center(
-                    child: Text(
-                      '1',
-                      style:
-                          TextStyle(fontSize: 12, color: AppColors.textLigth),
-                    ),
-                  ),
-                ),
+                Center(child: UnreadIndicator(channel: widget.channel)),
                 const SizedBox(height: 23)
               ]),
         )
@@ -275,6 +259,51 @@ class _MessageTitleState extends State<_MessageTitle> {
           ),
         );
       },
+    );
+  }
+}
+
+class UnreadIndicator extends StatelessWidget {
+  const UnreadIndicator({
+    Key? key,
+    required this.channel,
+  }) : super(key: key);
+
+  final Channel channel;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: BetterStreamBuilder<int>(
+        stream: channel.state!.unreadCountStream,
+        initialData: channel.state!.unreadCount,
+        builder: (context, data) {
+          if (data == 0) {
+            return const SizedBox.shrink();
+          }
+          return Material(
+            borderRadius: BorderRadius.circular(8),
+            color: AppColors.secondary,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 5,
+                right: 5,
+                top: 2,
+                bottom: 1,
+              ),
+              child: Center(
+                child: Text(
+                  '${data > 99 ? '99+' : data}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

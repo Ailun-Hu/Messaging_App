@@ -31,10 +31,13 @@ environment:
 dependencies:
   cupertino_icons: ^1.0.2
   faker: ^2.0.0
+  firebase_auth: ^4.2.5
+  firebase_core: ^2.4.1
   flutter:
     sdk: flutter
   flutter_animate: ^2.2.0
   google_fonts: ^3.0.1
+  google_sign_in: ^5.4.3
   jiffy: ^5.0.0
   logger: ^1.1.0
   popup_card: ^0.1.0
@@ -50,6 +53,8 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - assets/google.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

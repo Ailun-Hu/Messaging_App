@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:messaging_app/add_user.dart';
@@ -9,8 +10,9 @@ import 'package:messaging_app/theme.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   final client = StreamChatClient('s63vmjsq57kr');
-
+  await Firebase.initializeApp();
   runApp(MyApp(client: client));
 }
 

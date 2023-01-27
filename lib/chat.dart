@@ -7,12 +7,54 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:messaging_app/app.dart';
 import 'package:messaging_app/theme.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
-import 'package:stream_chat_flutter_core/stream_chat_flutter_core.dart';
 
-class Chat extends StatelessWidget {
+class Chat extends StatefulWidget {
   const Chat({Key? key, required this.channel}) : super(key: key);
 
   final Channel channel;
+
+  @override
+  State<Chat> createState() => _ChatState();
+}
+
+class _ChatState extends State<Chat> {
+  late StreamSubscription<int> unreadCountSubscription;
+  String otherUserImage = "";
+  String otherUserName = "";
+  _otherUser() {
+    widget.channel
+        .queryMembers(
+            filter: Filter.notEqual(
+                'id', StreamChatCore.of(context).currentUser!.id),
+            pagination: const PaginationParams(limit: 1))
+        .then((value) => value.members[0].userId.toString())
+        .then((value) => StreamChatCore.of(context)
+            .client
+            .queryUsers(filter: Filter.equal('id', value))
+            .then((value) => setState(() {
+                  otherUserImage = value.users[0].image.toString();
+                  otherUserName = value.users[0].name.toString();
+                })));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _otherUser();
+    unreadCountSubscription = StreamChannel.of(context)
+        .channel
+        .state!
+        .unreadCountStream
+        .listen(_unreadCountHandler);
+  }
+
+  Future<void> _unreadCountHandler(int count) async {
+    if (count > 0) {
+      await StreamChannel.of(context).channel.markRead();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,11 +68,11 @@ class Chat extends StatelessWidget {
                 decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     image: DecorationImage(
-                        image: NetworkImage(context.currentUserImage!),
+                        image: NetworkImage(otherUserImage),
                         fit: BoxFit.fill))),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 5),
-              child: Text("hi", style: TextStyle(fontSize: 17)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child: Text(otherUserName, style: const TextStyle(fontSize: 17)),
             ),
           ],
         ),
@@ -189,9 +231,13 @@ class Messages extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(8),
       child: ListView.separated(
+        reverse: true,
         separatorBuilder: ((context, index) {
           if (index == messages.length - 1) {
-            return _DateLabel(label: messages[index].createdAt.toString());
+            return _DateLabel(
+                label: Jiffy(messages[index].createdAt.toLocal())
+                    .MMMEd
+                    .toString());
           } else {
             return const SizedBox.shrink();
           }
@@ -324,11 +370,11 @@ class _MessageTileState extends State<MessageTile> {
               ),
               if (show)
                 Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Text(widget.messageDate.toString())
-                      .animate()
-                      .moveY(begin: 20, duration: 200.milliseconds),
-                )
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Text(
+                            Jiffy(widget.messageDate.toLocal()).jm.toString()))
+                    .animate()
+                    .moveY(begin: 20, duration: 200.milliseconds),
             ],
           ),
         ));
@@ -411,7 +457,8 @@ class _SenderMessageTileState extends State<SenderMessageTile> {
                 if (show)
                   Padding(
                       padding: const EdgeInsets.only(top: 10),
-                      child: Text(widget.messageDate.toString())
+                      child: Text(
+                              Jiffy(widget.messageDate.toLocal()).jm.toString())
                           .animate()
                           .moveY(begin: 20, duration: 200.milliseconds))
               ],

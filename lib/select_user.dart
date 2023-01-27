@@ -1,5 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:stream_chat_flutter_core/stream_chat_flutter_core.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:messaging_app/google_auth.dart';
+import 'package:stream_chat_flutter_core/stream_chat_flutter_core.dart'
+    as stream;
 import 'demo_users.dart';
 import 'package:logger/logger.dart' as log;
 
@@ -25,9 +29,9 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
       loading = true;
     });
     try {
-      final client = StreamChatCore.of(context).client;
+      final client = stream.StreamChatCore.of(context).client;
       await client.connectUser(
-          User(id: user.id), client.devToken(user.id).rawValue);
+          stream.User(id: user.id), client.devToken(user.id).rawValue);
       setState(() {
         loading = false;
       });
@@ -41,6 +45,49 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
     widget.goToChats();
   }
 
+  Future<void> googleLogin() async {
+    setState(() {
+      loading = true;
+    });
+    //Google Login
+    final client = stream.StreamChatCore.of(context).client;
+    final GoogleSignInAccount? googleUser = await GoogleSignIn(
+      scopes: <String>[
+        'email',
+        'https://www.googleapis.com/auth/contacts.readonly',
+      ],
+    ).signIn();
+    if (googleUser == null) {
+      setState(() {
+        loading = false;
+      });
+      return;
+    }
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken, idToken: googleAuth.idToken);
+
+    final UserCredential res =
+        await FirebaseAuth.instance.signInWithCredential(credential);
+    final stream.User user = stream.User(
+        id: res.user!.uid,
+        image: res.user!.photoURL,
+        name: res.user!.displayName);
+
+    //Stream Login After Google Login
+    try {
+      await client.connectUser(user, client.devToken(user.id).rawValue);
+    } on Exception catch (e, st) {
+      logger.e("could not connect user", e, st);
+      setState(() {
+        loading = false;
+      });
+    }
+    widget.goToChats();
+  }
+
   @override
   Widget build(BuildContext context) {
     return (loading)
@@ -50,6 +97,12 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                GestureDetector(
+                    onTap: () {
+                      googleLogin();
+                    },
+                    child: const Image(
+                        width: 300, image: AssetImage('assets/google.png'))),
                 Expanded(
                     child: ListView.builder(
                   itemCount: users.length,
@@ -57,9 +110,10 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                     return SelectUserButton(
                         user: users[index], onPressed: onUserSelected);
                   },
-                ))
+                )),
               ],
-            ));
+            ),
+          );
   }
 }
 
